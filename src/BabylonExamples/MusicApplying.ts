@@ -18,13 +18,10 @@ import "@babylonjs/loaders";
 import * as CANNON from "cannon";
 import * as Tone from 'tone';
 import { Room } from "colyseus.js";
-import { Client } from "colyseus.js";
-import { Luncher } from "./luncher";
+
 
 // import * as Tone from 'https://cdn.skypack.dev/toninspectorinspectore';
 
-const ROOM_NAME = "my_room";
-const ENDPOINT = "ws://localhost:2567";
 
 export class MusicApplying {
     scene: Scene;
@@ -51,9 +48,9 @@ export class MusicApplying {
         this.CreateEnvironment();
         this.CreateController();
         this.createImpostors();
-        this.detectTrigger();
+        // this.detectTrigger();
         this.initPlayers();
-        // Start the Tone.js context when a user action occurs
+
 
         this.canvas.addEventListener('click', () => {
             this.startAudioContext();
@@ -94,9 +91,18 @@ export class MusicApplying {
             });
         });
 
-        this.room.onMessage("playSound", () => {
-            // Play the sound when instructed by the server
-            this.playMelody();
+        // this.room.onMessage("playSound", () => {
+        //     // Play the sound when instructed by the server
+        //     this.playMelody("C4");
+        // });
+
+        // Listen for "playSound" message from the server
+        this.room.onMessage("playSound", (message) => {
+            // Extract note information from the message
+            const padName = message.padName as string;
+
+            // Play the sound corresponding to the received note
+            this.playNoteForMesh(padName);
         });
 
         this.room.state.players.onRemove((player, playerId) => {
@@ -106,7 +112,7 @@ export class MusicApplying {
         });
 
         this.room.onLeave(code => {
-                // handle removed players
+                // handle removed room
         })
     }
 
@@ -145,13 +151,15 @@ export class MusicApplying {
         // this.box.position = new Vector3(0, 10, 2);
         // this.box.rotation = new Vector3(Math.PI / 4, 0, 0);
         // this.box.physicsImpostor = new PhysicsImpostor(this.box, PhysicsImpostor.BoxImpostor, { mass: 1, restitution: 1 }, this.scene)
-        this.ground = MeshBuilder.CreateGround("ground", { width: 40, height: 40 }, this.scene);
-        this.ground.position.y = 0.25;
-        this.ground.isVisible = false;
-        this.ground.physicsImpostor = new PhysicsImpostor(this.ground, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 1 }, this.scene);
-        this.sphere = MeshBuilder.CreateSphere("sphere", { diameter: 3 }, this.scene);
-        this.sphere.position = new Vector3(0, 6, 0);
-        this.sphere.physicsImpostor = new PhysicsImpostor(this.sphere, PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 1, friction: 1 }, this.scene);
+
+
+        // this.ground = MeshBuilder.CreateGround("ground", { width: 40, height: 40 }, this.scene);
+        // this.ground.position.y = 0.25;
+        // this.ground.isVisible = false;
+        // this.ground.physicsImpostor = new PhysicsImpostor(this.ground, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 1 }, this.scene);
+        // this.sphere = MeshBuilder.CreateSphere("sphere", { diameter: 3 }, this.scene);
+        // this.sphere.position = new Vector3(0, 6, 0);
+        // this.sphere.physicsImpostor = new PhysicsImpostor(this.sphere, PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 1, friction: 1 }, this.scene);
 
         // this.sphere.physicsImpostor.registerOnPhysicsCollide([this.box.physicsImpostor,this.ground.physicsImpostor], this.detectCollision);
         // this.sphere.physicsImpostor.registerOnPhysicsCollide(this.ground.physicsImpostor, this.detectCollision);
@@ -166,25 +174,64 @@ export class MusicApplying {
         (colliderAgainst.object as AbstractMesh).material = mat;
     }
 
-    detectTrigger(): void {
-        const box = MeshBuilder.CreateBox("box", { width: 4, height: 1, depth: 4 }, this.scene);
-        box.position.y = 0.5;
-        box.visibility = 0.25;
-        box.actionManager = new ActionManager(this.scene);
-        box.actionManager.registerAction(
-            new ExecuteCodeAction(
-                ActionManager.OnPickTrigger,
-                () => {
-                    // this.playMelody();
-                    this.room.send("boxClicked");
+    // detectTrigger(): void {
+    //     const box = MeshBuilder.CreateBox("box", { width: 4, height: 1, depth: 4 }, this.scene);
+    //     box.position.y = 0.5;
+    //     box.visibility = 0.25;
+    //     box.actionManager = new ActionManager(this.scene);
+    //     box.actionManager.registerAction(
+    //         new ExecuteCodeAction(
+    //             ActionManager.OnPickTrigger,
+    //             () => {
+    //                 // this.playMelody();
+    //                 this.room.send("boxClicked");
 
-                }
-            )
+    //             }
+    //         )
+    //     );
+
+
+    // }
+    async importPiano(): Promise<void> {
+        const { meshes, } = await SceneLoader.ImportMeshAsync(
+            "",
+            "./models/",
+            "xylo.babylon",
+            this.scene
         );
+        meshes.forEach((mesh) => {
+            mesh.checkCollisions = true;
+            // mesh.position = new Vector3(0, 5, 0);
+            // mesh.isPickable = true;
+        })
+        meshes[0].scaling = new Vector3(0.001, 0.001, 0.001); // Adjust the scaling factor as needed
+        meshes[0].position = new Vector3(0, 0, 0);
+        
+       // Iterate over all meshes to set up action managers
+       meshes.forEach((mesh) => {
+        // Extract the pad name from the mesh name
+        const padName = mesh.name;
+        
+        // Check if the mesh name corresponds to a xylophone pad
+        if (padName.startsWith("Xylophone_Pad.")) {
+            // Add action manager to the pad mesh
+            mesh.actionManager = new ActionManager(this.scene);
+            mesh.actionManager.registerAction(
+                new ExecuteCodeAction(
+                    ActionManager.OnPickTrigger,
+                    () => {
+                        this.room.send("boxClicked",{padName});
 
+                        // this.playNoteForMesh(padName);
+                    }
+                )
+            );
+        }
+    });
+        // console.log(meshes)
 
     }
-
+    
     async CreateEnvironment(): Promise<void> {
         const { meshes } = await SceneLoader.ImportMeshAsync(
             "",
@@ -196,6 +243,7 @@ export class MusicApplying {
             mesh.checkCollisions = true;
             // mesh.isPickable = true;
         })
+        this.importPiano()
     }
 
     CreateController(): void {
@@ -218,10 +266,19 @@ export class MusicApplying {
 
 
     }
+    playNoteForMesh(padName: string): void {
+        // Extract the note index from the pad name
+        const noteIndex = parseInt(padName.split('.')[1]);
+        // Calculate the corresponding note based on the index
+        const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5"];
+        const note = notes[(noteIndex - 1) % notes.length];
 
+        // Play the note using Tone.js
+        this.playMelody(note);
+    }
 
     // Tone.js melody setup
-    async playMelody(): Promise<void> {
+    async playMelody(note:string): Promise<void> {
         // Stop the previous melody if it's playing
         // if (this.synth !== null) {
         //    await this.synth.triggerRelease();
@@ -236,7 +293,7 @@ export class MusicApplying {
         const newSound = new Tone.Synth().toDestination();
 
         // Play a middle 'C' for the duration of an 8th note
-        newSound.triggerAttackRelease("C4", "8n");
+        newSound.triggerAttackRelease(note, "8n");
 
         // Start the Tone.js Transport to play scheduled events
         Tone.Transport.start();
@@ -252,6 +309,33 @@ export class MusicApplying {
             await Tone.start();
         }
     }
+
+    initPads(): void {
+        const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5"];
+
+        // Iterate over the names of the xylophone pads
+        for (let i = 1; i <= 12; i++) {
+            const padName = `Xylophone_Pad.${i.toString().padStart(3, '0')}`;
+            const padMesh = this.scene.getMeshByName(padName) as AbstractMesh;
+
+            if (padMesh) {
+                const noteIndex = i - 1; // Adjust index since arrays are zero-based
+                const note = notes[noteIndex % notes.length]; // Get the note based on the index
+
+                // Add action manager to the pad mesh
+                padMesh.actionManager = new ActionManager(this.scene);
+                padMesh.actionManager.registerAction(
+                    new ExecuteCodeAction(
+                        ActionManager.OnPickTrigger,
+                        () => {
+                            this.playMelody(note);
+                        }
+                    )
+                );
+            }
+        }
+    }
+
 
 
 

@@ -1,0 +1,30 @@
+{
+  "name": "b103",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack-dev-server --port 9999"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babylonjs/core": "^6.44.0",
+    "@babylonjs/inspector": "^6.44.0",
+    "html-webpack-plugin": "^5.6.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.2"
+  },
+  "dependencies": {
+    "@types/cannon": "^0.1.12",
+    "babylonjs-gui": "^7.1.0",
+    "cannon": "^0.6.2",
+    "colyseus.js": "^0.15.18",
+    "tone": "^14.7.77"
+  }
+}

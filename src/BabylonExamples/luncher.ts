@@ -7,7 +7,7 @@ import { MusicApplying } from "./MusicApplying";
 // import * as Tone from 'https://cdn.skypack.dev/toninspectorinspectore';
 
 const ROOM_NAME = "my_room";
-const ENDPOINT = "ws://192.168.1.22:2567";
+const ENDPOINT = "ws://20.50.0.235:2567";
 
 
 
